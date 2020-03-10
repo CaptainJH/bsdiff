@@ -140,7 +140,7 @@ int main(int argc,char * argv[])
 	if(argc!=4) errx(1,"usage: %s oldfile newfile patchfile\n",argv[0]);
 
 	/* Open patch file */
-	if ((f = fopen(argv[3], "r")) == NULL)
+	if ((f = fopen(argv[3], "rb")) == NULL)
 		err(1, "fopen(%s)", argv[3]);
 
 	/* Read header */
@@ -159,14 +159,17 @@ int main(int argc,char * argv[])
 	if(newsize<0)
 		errx(1,"Corrupt patch\n");
 
+	FILE* fileInput = fopen(argv[1], "rb");
 	/* Close patch file and re-open it via libbzip2 at the right places */
 	if(((fd=open(argv[1],O_RDONLY,0))<0) ||
 		((oldsize=lseek(fd,0,SEEK_END))==-1) ||
 		((old=malloc(oldsize+1))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
-		(read(fd,old,oldsize)!=oldsize) ||
+		//(read(fd,old,oldsize)!=oldsize) ||
+		(fread(old, sizeof(char), oldsize, fileInput) != oldsize) ||
 		(fstat(fd, &sb)) ||
 		(close(fd)==-1)) err(1,"%s",argv[1]);
+	fclose(fileInput);
 	if((new=malloc(newsize+1))==NULL) err(1,NULL);
 
 	if (NULL == (bz2 = BZ2_bzReadOpen(&bz2err, f, 0, 0, NULL, 0)))
@@ -182,9 +185,13 @@ int main(int argc,char * argv[])
 	fclose(f);
 
 	/* Write the new file */
-	if(((fd=open(argv[2],O_CREAT|O_TRUNC|O_WRONLY,sb.st_mode))<0) ||
-		(write(fd,new,newsize)!=newsize) || (close(fd)==-1))
-		err(1,"%s",argv[2]);
+	FILE* fileOutput = fopen(argv[2], "wb");
+	if (fileOutput == NULL ||
+		fwrite(new, sizeof(char), newsize, fileOutput) != newsize)
+	{
+		err(1, "%s", argv[2]);
+	}
+	fclose(fileOutput);
 
 	free(new);
 	free(old);

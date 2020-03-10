@@ -395,27 +395,31 @@ int main(int argc,char *argv[])
 
 	if(argc!=4) errx(1,"usage: %s oldfile newfile patchfile\n",argv[0]);
 
+	FILE* fileInput = fopen(argv[1], "rb");
 	/* Allocate oldsize+1 bytes instead of oldsize bytes to ensure
 		that we never try to malloc(0) and get a NULL pointer */
 	if(((fd=open(argv[1],O_RDONLY,0))<0) ||
 		((oldsize=lseek(fd,0,SEEK_END))==-1) ||
 		((old=malloc(oldsize+1))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
-		(read(fd,old,oldsize)!=oldsize) ||
+		//(read(fd,old,oldsize)!=oldsize) ||
+		(fread(old, sizeof(char), oldsize, fileInput) != oldsize) ||
 		(close(fd)==-1)) err(1,"%s",argv[1]);
 
-
+	fclose(fileInput);
+	fileInput = fopen(argv[2], "rb");
 	/* Allocate newsize+1 bytes instead of newsize bytes to ensure
 		that we never try to malloc(0) and get a NULL pointer */
 	if(((fd=open(argv[2],O_RDONLY,0))<0) ||
 		((newsize=lseek(fd,0,SEEK_END))==-1) ||
 		((new=malloc(newsize+1))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
-		(read(fd,new,newsize)!=newsize) ||
+		//(read(fd,new,newsize)!=newsize) ||
+		(fread(new, sizeof(char), newsize, fileInput) != newsize) ||
 		(close(fd)==-1)) err(1,"%s",argv[2]);
-
+	fclose(fileInput);
 	/* Create the patch file */
-	if ((pf = fopen(argv[3], "w")) == NULL)
+	if ((pf = fopen(argv[3], "wb")) == NULL)
 		err(1, "%s", argv[3]);
 
 	/* Write header (signature+newsize)*/
